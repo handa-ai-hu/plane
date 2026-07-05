@@ -47,12 +47,14 @@ export function InstanceDingTalkConfigForm(props: Props) {
     defaultValues: {
       DINGTALK_CLIENT_ID: config["DINGTALK_CLIENT_ID"],
       DINGTALK_CLIENT_SECRET: config["DINGTALK_CLIENT_SECRET"],
+      DINGTALK_REDIRECT_URI: config["DINGTALK_REDIRECT_URI"] || "",
       ENABLE_DINGTALK_SYNC: config["ENABLE_DINGTALK_SYNC"] || "1",
       ENABLE_DINGTALK_CONTACT_SYNC: config["ENABLE_DINGTALK_CONTACT_SYNC"] || "1",
     },
   });
 
   const originURL = !isEmpty(API_BASE_URL) ? API_BASE_URL : typeof window !== "undefined" ? window.location.origin : "";
+  const callbackURL = config["DINGTALK_REDIRECT_URI"] || `${originURL}/auth/dingtalk/callback/`;
 
   const DINGTALK_FORM_FIELDS: TControllerInputFormField[] = [
     {
@@ -99,6 +101,15 @@ export function InstanceDingTalkConfigForm(props: Props) {
       error: Boolean(errors.DINGTALK_CLIENT_SECRET),
       required: true,
     },
+    {
+      key: "DINGTALK_REDIRECT_URI",
+      type: "text",
+      label: "Redirect URI",
+      description: "Optional. Leave blank to use the default Plane callback URI.",
+      placeholder: `${originURL}/auth/dingtalk/callback/`,
+      error: Boolean(errors.DINGTALK_REDIRECT_URI),
+      required: false,
+    },
   ];
 
   const DINGTALK_FORM_SWITCH_FIELDS: TControllerSwitchFormField<DingTalkConfigFormValues>[] = [
@@ -116,7 +127,7 @@ export function InstanceDingTalkConfigForm(props: Props) {
     {
       key: "Callback_URI",
       label: "Callback URI",
-      url: `${originURL}/auth/dingtalk/callback/`,
+      url: callbackURL,
       description: (
         <>
           We will auto-generate this. Paste this into your <CodeBlock darkerShade>Callback URL</CodeBlock> field in
@@ -139,6 +150,7 @@ export function InstanceDingTalkConfigForm(props: Props) {
       reset({
         DINGTALK_CLIENT_ID: response.find((item) => item.key === "DINGTALK_CLIENT_ID")?.value,
         DINGTALK_CLIENT_SECRET: response.find((item) => item.key === "DINGTALK_CLIENT_SECRET")?.value,
+        DINGTALK_REDIRECT_URI: response.find((item) => item.key === "DINGTALK_REDIRECT_URI")?.value || "",
         ENABLE_DINGTALK_SYNC: response.find((item) => item.key === "ENABLE_DINGTALK_SYNC")?.value,
         ENABLE_DINGTALK_CONTACT_SYNC: response.find((item) => item.key === "ENABLE_DINGTALK_CONTACT_SYNC")?.value,
       });

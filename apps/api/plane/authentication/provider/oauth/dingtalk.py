@@ -6,12 +6,13 @@ import os
 import re
 import uuid
 from datetime import timedelta
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import pytz
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
+from pypinyin import lazy_pinyin
 
 from plane.authentication.adapter.error import (
     AUTHENTICATION_ERROR_CODES,
@@ -22,6 +23,8 @@ from plane.db.models import Account, DingTalkUser, Profile, User
 from plane.integrations.dingtalk.client import DingTalkClient
 from plane.integrations.dingtalk.sync import sync_dingtalk_identity
 from plane.license.utils.instance_value import get_configuration_value
+
+DINGTALK_EMAIL_DOMAIN = "handa.com"
 
 
 def _first_value(*values):
@@ -41,6 +44,37 @@ def _safe_account_part(value):
     return (value or "unknown")[:120]
 
 
+def _ascii_email_part(value):
+    return re.sub(r"[^a-zA-Z0-9]+", "", str(value or ""))
+
+
+def _handa_email_from_name(name):
+    name = str(name or "").strip()
+    if not name:
+        return None
+
+    local_part = "".join(lazy_pinyin(name, errors=_ascii_email_part))
+    local_part = re.sub(r"[^a-zA-Z0-9]+", "", local_part).lower()
+    if not local_part:
+        return None
+    return f"{local_part[:80]}@{DINGTALK_EMAIL_DOMAIN}"
+
+
+def _build_redirect_uri(request, configured_redirect_uri=None):
+    if configured_redirect_uri:
+        redirect_uri = str(configured_redirect_uri).strip()
+        parsed_uri = urlparse(redirect_uri)
+        if parsed_uri.scheme in ("http", "https") and parsed_uri.netloc:
+            return redirect_uri
+
+        raise AuthenticationException(
+            error_code=AUTHENTICATION_ERROR_CODES["DINGTALK_NOT_CONFIGURED"],
+            error_message="DINGTALK_REDIRECT_URI_INVALID",
+        )
+
+    return f"{'https' if request.is_secure() else 'http'}://{request.get_host()}/auth/dingtalk/callback/"
+
+
 class DingTalkOAuthProvider(OauthAdapter):
     provider = "dingtalk"
     scope = "openid corpid"
@@ -51,6 +85,7 @@ class DingTalkOAuthProvider(OauthAdapter):
             DINGTALK_CLIENT_ID,
             DINGTALK_CLIENT_SECRET,
             ENABLE_DINGTALK_CONTACT_SYNC,
+            DINGTALK_REDIRECT_URI,
         ) = get_configuration_value(
             [
                 {
@@ -69,6 +104,10 @@ class DingTalkOAuthProvider(OauthAdapter):
                     "key": "ENABLE_DINGTALK_CONTACT_SYNC",
                     "default": os.environ.get("ENABLE_DINGTALK_CONTACT_SYNC", "1"),
                 },
+                {
+                    "key": "DINGTALK_REDIRECT_URI",
+                    "default": os.environ.get("DINGTALK_REDIRECT_URI", ""),
+                },
             ]
         )
 
@@ -84,7 +123,7 @@ class DingTalkOAuthProvider(OauthAdapter):
         self.dingtalk_departments = []
         self.dingtalk_sync_error = None
 
-        redirect_uri = f"{'https' if request.is_secure() else 'http'}://{request.get_host()}/auth/dingtalk/callback/"
+        redirect_uri = _build_redirect_uri(request=request, configured_redirect_uri=DINGTALK_REDIRECT_URI)
         url_params = {
             "client_id": DINGTALK_CLIENT_ID,
             "scope": self.scope,
@@ -217,11 +256,13 @@ class DingTalkOAuthProvider(OauthAdapter):
         if not corp_id:
             self._raise_provider_error()
 
-        email = _first_value(user_detail.get("email"), me_response.get("email"))
+        name = _first_value(user_detail.get("name"), me_response.get("name"), me_response.get("nick"), "")
+        email = _handa_email_from_name(name)
+        if not email:
+            email = _first_value(user_detail.get("email"), me_response.get("email"))
         if not email:
             email = self._placeholder_email(corp_id=corp_id, provider_id=provider_id)
 
-        name = _first_value(user_detail.get("name"), me_response.get("name"), me_response.get("nick"), "")
         nick = _first_value(me_response.get("nick"), user_detail.get("nick"))
         identity = {
             "corp_id": corp_id or "",
@@ -334,6 +375,18 @@ class DingTalkOAuthProvider(OauthAdapter):
             self._raise_provider_error()
         return next(iter(unique_candidates.values()), None)
 
+    def _sync_user_email(self, user, email):
+        if not email or user.email == email:
+            return user
+
+        if User.objects.filter(email=email).exclude(id=user.id).exists():
+            self._raise_provider_error()
+
+        user.email = email
+        user.is_email_verified = True
+        user.save(update_fields=["email", "is_email_verified", "updated_at"])
+        return user
+
     def create_update_account(self, user):
         account_provider_id = self._account_provider_id()
         accounts = list(Account.objects.filter(
@@ -412,6 +465,7 @@ class DingTalkOAuthProvider(OauthAdapter):
                 sync_enabled = self.check_sync_enabled()
                 if sync_enabled:
                     user = self.sync_user_data(user=user)
+                    user = self._sync_user_email(user=user, email=email)
                 if mobile and (sync_enabled or not user.mobile_number) and user.mobile_number != mobile:
                     user.mobile_number = mobile
                     user.save(update_fields=["mobile_number"])

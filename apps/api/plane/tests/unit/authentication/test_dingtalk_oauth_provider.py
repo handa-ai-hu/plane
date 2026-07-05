@@ -9,12 +9,22 @@ import pytest
 from django.test import RequestFactory
 
 from plane.authentication.adapter.error import AUTHENTICATION_ERROR_CODES, AuthenticationException
-from plane.authentication.provider.oauth.dingtalk import DingTalkOAuthProvider
+from plane.authentication.provider.oauth.dingtalk import DingTalkOAuthProvider, _handa_email_from_name
 from plane.db.models import Account, DingTalkDepartment, DingTalkUser, DingTalkUserDepartment, User
 
 
 def _enabled_dingtalk_config(_keys):
-    return ("1", "ding-client-id", "ding-client-secret", "1")
+    return ("1", "ding-client-id", "ding-client-secret", "1", "")
+
+
+def _enabled_dingtalk_config_with_redirect(_keys):
+    return (
+        "1",
+        "ding-client-id",
+        "ding-client-secret",
+        "1",
+        "https://plane.example.com/auth/dingtalk/callback/",
+    )
 
 
 def _request():
@@ -23,6 +33,10 @@ def _request():
 
 @pytest.mark.unit
 class TestDingTalkOAuthProvider:
+    def test_handa_email_from_chinese_name(self):
+        assert _handa_email_from_name("王小明") == "wangxiaoming@handa.com"
+        assert _handa_email_from_name("张 三") == "zhangsan@handa.com"
+
     @patch("plane.authentication.provider.oauth.dingtalk.get_configuration_value", side_effect=_enabled_dingtalk_config)
     def test_auth_url_uses_dingtalk_oauth_parameters(self, _config):
         provider = DingTalkOAuthProvider(request=_request(), state="state-123")
@@ -37,9 +51,21 @@ class TestDingTalkOAuthProvider:
         assert query["state"] == ["state-123"]
         assert query["redirect_uri"] == ["http://localhost:8000/auth/dingtalk/callback/"]
 
+    @patch(
+        "plane.authentication.provider.oauth.dingtalk.get_configuration_value",
+        side_effect=_enabled_dingtalk_config_with_redirect,
+    )
+    def test_auth_url_uses_configured_redirect_uri(self, _config):
+        provider = DingTalkOAuthProvider(request=_request(), state="state-123")
+
+        parsed = urlparse(provider.get_auth_url())
+        query = parse_qs(parsed.query)
+
+        assert query["redirect_uri"] == ["https://plane.example.com/auth/dingtalk/callback/"]
+
     @pytest.mark.django_db
     @patch("plane.authentication.provider.oauth.dingtalk.get_configuration_value", side_effect=_enabled_dingtalk_config)
-    def test_authenticate_creates_user_account_and_dingtalk_identity_with_placeholder_email(self, _config):
+    def test_authenticate_creates_user_account_and_dingtalk_identity_with_handa_email(self, _config):
         provider = DingTalkOAuthProvider(request=_request(), code="auth-code")
         provider.client = Mock()
         provider.client.get_user_access_token.return_value = {
@@ -73,7 +99,7 @@ class TestDingTalkOAuthProvider:
 
         user = provider.authenticate()
 
-        assert user.email == "dingtalk_corp_1_union_1@dingtalk.local"
+        assert user.email == "wangxiaoming@handa.com"
         assert user.mobile_number == "13800000000"
         assert user.is_password_autoset is True
         assert Account.objects.filter(provider="dingtalk", provider_account_id="corp-1:union-1", user=user).exists()
@@ -130,6 +156,7 @@ class TestDingTalkOAuthProvider:
         user = provider.authenticate()
 
         assert user.id == existing_user.id
+        assert user.email == "wangxiaoming@handa.com"
         assert User.objects.count() == 1
         assert Account.objects.filter(provider="dingtalk", provider_account_id="corp-1:union-1", user=user).count() == 1
         assert DingTalkUser.objects.filter(corp_id="corp-1", union_id="union-1").count() == 1
@@ -159,7 +186,7 @@ class TestDingTalkOAuthProvider:
 
         user = provider.authenticate()
 
-        assert user.email == "dingtalk_corp_from_token_union_from_me@dingtalk.local"
+        assert user.email == "wangxiaoming@handa.com"
         assert Account.objects.filter(
             provider="dingtalk",
             provider_account_id="corp-from-token:union-from-me",
@@ -278,6 +305,7 @@ class TestDingTalkOAuthProvider:
         user = provider.authenticate()
 
         assert user.id == existing_user.id
+        assert user.email == "shengjiyonghu@handa.com"
         assert User.objects.count() == 1
         assert Account.objects.filter(provider="dingtalk", provider_account_id="corp-1:union-upgrade", user=user).exists()
         assert Account.objects.filter(provider="dingtalk", provider_account_id="corp-1:open-upgrade").count() == 0

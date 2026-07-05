@@ -61,6 +61,7 @@ export type TInstanceGiteaAuthenticationConfigurationKeys =
 export type TInstanceDingTalkAuthenticationConfigurationKeys =
   | "DINGTALK_CLIENT_ID"
   | "DINGTALK_CLIENT_SECRET"
+  | "DINGTALK_REDIRECT_URI"
   | "ENABLE_DINGTALK_SYNC"
   | "ENABLE_DINGTALK_CONTACT_SYNC";
 

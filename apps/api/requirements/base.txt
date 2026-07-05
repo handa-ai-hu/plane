@@ -30,6 +30,8 @@ jsonmodels==2.7.0
 django-storages==1.14.2
 # user management
 django-crum==0.7.9
+# Chinese name transliteration for DingTalk account email aliases
+pypinyin==0.55.0
 # web server
 uvicorn==0.29.0
 # sockets

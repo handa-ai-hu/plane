@@ -164,6 +164,12 @@ dingtalk_config_variables = [
         "is_encrypted": True,
     },
     {
+        "key": "DINGTALK_REDIRECT_URI",
+        "value": os.environ.get("DINGTALK_REDIRECT_URI", ""),
+        "category": "DINGTALK",
+        "is_encrypted": False,
+    },
+    {
         "key": "ENABLE_DINGTALK_SYNC",
         "value": os.environ.get("ENABLE_DINGTALK_SYNC", "1"),
         "category": "DINGTALK",
