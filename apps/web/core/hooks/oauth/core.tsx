@@ -10,6 +10,7 @@ import { useTheme } from "next-themes";
 import { API_BASE_URL } from "@plane/constants";
 import type { TOAuthConfigs, TOAuthOption } from "@plane/types";
 // assets
+import dingtalkLogo from "@/app/assets/logos/dingtalk-logo.svg?url";
 import giteaLogo from "@/app/assets/logos/gitea-logo.svg?url";
 import GithubLightLogo from "@/app/assets/logos/github-black.png?url";
 import GithubDarkLogo from "@/app/assets/logos/github-dark.svg?url";
@@ -33,7 +34,8 @@ export const useCoreOAuthConfig = (oauthActionText: string): TOAuthConfigs => {
       (config?.is_google_enabled ||
         config?.is_github_enabled ||
         config?.is_gitlab_enabled ||
-        config?.is_gitea_enabled)) ||
+        config?.is_gitea_enabled ||
+        config?.is_dingtalk_enabled)) ||
     false;
   const oAuthOptions: TOAuthOption[] = [
     {
@@ -78,6 +80,15 @@ export const useCoreOAuthConfig = (oauthActionText: string): TOAuthConfigs => {
         window.location.assign(`${API_BASE_URL}/auth/gitea/${next_path ? `?next_path=${next_path}` : ``}`);
       },
       enabled: config?.is_gitea_enabled,
+    },
+    {
+      id: "dingtalk",
+      text: `${oauthActionText} with DingTalk`,
+      icon: <img src={dingtalkLogo} height={18} width={18} alt="DingTalk Logo" />,
+      onClick: () => {
+        window.location.assign(`${API_BASE_URL}/auth/dingtalk/${next_path ? `?next_path=${next_path}` : ``}`);
+      },
+      enabled: config?.is_dingtalk_enabled,
     },
   ];
 

@@ -12,6 +12,7 @@ import type {
   TInstanceAuthenticationModes,
 } from "@plane/types";
 // assets
+import dingtalkLogo from "@/app/assets/logos/dingtalk-logo.svg?url";
 import giteaLogo from "@/app/assets/logos/gitea-logo.svg?url";
 import githubLightModeImage from "@/app/assets/logos/github-black.png?url";
 import githubDarkModeImage from "@/app/assets/logos/github-white.png?url";
@@ -19,6 +20,7 @@ import gitlabLogo from "@/app/assets/logos/gitlab-logo.svg?url";
 import googleLogo from "@/app/assets/logos/google-logo.svg?url";
 // components
 import { EmailCodesConfiguration } from "@/components/authentication/email-config-switch";
+import { DingTalkConfiguration } from "@/components/authentication/dingtalk-config";
 import { GiteaConfiguration } from "@/components/authentication/gitea-config";
 import { GithubConfiguration } from "@/components/authentication/github-config";
 import { GitlabConfiguration } from "@/components/authentication/gitlab-config";
@@ -88,5 +90,13 @@ export const getCoreAuthenticationModesMap: (
     icon: <img src={giteaLogo} height={20} width={20} alt="Gitea Logo" />,
     config: <GiteaConfiguration disabled={disabled} updateConfig={updateConfig} />,
     enabledConfigKey: "IS_GITEA_ENABLED",
+  },
+  dingtalk: {
+    key: "dingtalk",
+    name: "DingTalk",
+    description: "Allow members to log in or sign up for Plane with their DingTalk accounts.",
+    icon: <img src={dingtalkLogo} height={20} width={20} alt="DingTalk Logo" />,
+    config: <DingTalkConfiguration disabled={disabled} updateConfig={updateConfig} />,
+    enabledConfigKey: "IS_DINGTALK_ENABLED",
   },
 });
