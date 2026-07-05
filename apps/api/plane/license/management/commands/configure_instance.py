@@ -40,7 +40,13 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(self.style.WARNING(f"{obj.key} configuration already exists"))
 
-        keys = ["IS_GOOGLE_ENABLED", "IS_GITHUB_ENABLED", "IS_GITLAB_ENABLED", "IS_GITEA_ENABLED"]
+        keys = [
+            "IS_GOOGLE_ENABLED",
+            "IS_GITHUB_ENABLED",
+            "IS_GITLAB_ENABLED",
+            "IS_GITEA_ENABLED",
+            "IS_DINGTALK_ENABLED",
+        ]
         if not InstanceConfiguration.objects.filter(key__in=keys).exists():
             for key in keys:
                 if key == "IS_GOOGLE_ENABLED":
@@ -142,6 +148,30 @@ class Command(BaseCommand):
                         value = "0"
                     InstanceConfiguration.objects.create(
                         key="IS_GITEA_ENABLED",
+                        value=value,
+                        category="AUTHENTICATION",
+                        is_encrypted=False,
+                    )
+                    self.stdout.write(self.style.SUCCESS(f"{key} loaded with value from environment variable."))
+                if key == "IS_DINGTALK_ENABLED":
+                    DINGTALK_CLIENT_ID, DINGTALK_CLIENT_SECRET = get_configuration_value(
+                        [
+                            {
+                                "key": "DINGTALK_CLIENT_ID",
+                                "default": os.environ.get("DINGTALK_CLIENT_ID", ""),
+                            },
+                            {
+                                "key": "DINGTALK_CLIENT_SECRET",
+                                "default": os.environ.get("DINGTALK_CLIENT_SECRET", ""),
+                            },
+                        ]
+                    )
+                    if bool(DINGTALK_CLIENT_ID) and bool(DINGTALK_CLIENT_SECRET):
+                        value = "1"
+                    else:
+                        value = "0"
+                    InstanceConfiguration.objects.create(
+                        key="IS_DINGTALK_ENABLED",
                         value=value,
                         category="AUTHENTICATION",
                         is_encrypted=False,

@@ -7,6 +7,7 @@ from .common import ChangePasswordEndpoint, CSRFTokenEndpoint, SetUserPasswordEn
 from .app.check import EmailCheckEndpoint
 
 from .app.email import SignInAuthEndpoint, SignUpAuthEndpoint
+from .app.dingtalk import DingTalkCallbackEndpoint, DingTalkOauthInitiateEndpoint
 from .app.github import GitHubCallbackEndpoint, GitHubOauthInitiateEndpoint
 from .app.gitlab import GitLabCallbackEndpoint, GitLabOauthInitiateEndpoint
 from .app.gitea import GiteaCallbackEndpoint, GiteaOauthInitiateEndpoint

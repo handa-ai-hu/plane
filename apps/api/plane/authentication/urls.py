@@ -14,6 +14,8 @@ from .views import (
     EmailCheckEndpoint,
     GitLabCallbackEndpoint,
     GitLabOauthInitiateEndpoint,
+    DingTalkCallbackEndpoint,
+    DingTalkOauthInitiateEndpoint,
     GitHubCallbackEndpoint,
     GitHubOauthInitiateEndpoint,
     GoogleCallbackEndpoint,
@@ -150,4 +152,7 @@ urlpatterns = [
         GiteaCallbackSpaceEndpoint.as_view(),
         name="space-gitea-callback",
     ),
+    ## DingTalk Oauth
+    path("dingtalk/", DingTalkOauthInitiateEndpoint.as_view(), name="dingtalk-initiate"),
+    path("dingtalk/callback/", DingTalkCallbackEndpoint.as_view(), name="dingtalk-callback"),
 ]

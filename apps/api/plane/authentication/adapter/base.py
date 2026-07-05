@@ -129,6 +129,7 @@ class Adapter:
             "github": "ENABLE_GITHUB_SYNC",
             "gitlab": "ENABLE_GITLAB_SYNC",
             "gitea": "ENABLE_GITEA_SYNC",
+            "dingtalk": "ENABLE_DINGTALK_SYNC",
         }
         config_key = provider_config_map.get(self.provider)
         if config_key:
@@ -237,7 +238,7 @@ class Adapter:
         user.last_active = timezone.now()
         user.last_login_time = timezone.now()
         user.last_login_ip = get_client_ip(request=self.request)
-        user.last_login_uagent = self.request.META.get("HTTP_USER_AGENT")
+        user.last_login_uagent = self.request.META.get("HTTP_USER_AGENT") or ""
         user.token_updated_at = timezone.now()
         # Activate provisioned accounts that have never been deactivated.
         # Explicitly-deactivated accounts are rejected earlier in
